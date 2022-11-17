@@ -26,6 +26,11 @@ sudo su - postgres -c ' /usr/local/pgsql/bin/pg_ctl -D /usr/local/pgsql/data -l 
 sudo su -c '/usr/local/pgsql/bin/createdb test' postgres &&
 export PATH="$PATH:/usr/local/pgsql/bin" &&
 
+sudo sed -i 's/max_connections = 100/max_connections = 800/g' /usr/local/pgsql/data/postgresql.conf &&
+sudo sed -i 's/shared_buffers = 128MB/shared_buffers = 528MB/g' /usr/local/pgsql/data/postgresql.conf &&
+sudo su - postgres -c ' /usr/local/pgsql/bin/pg_ctl -D /usr/local/pgsql/data -l logfile stop' && 
+sudo su - postgres -c ' /usr/local/pgsql/bin/pg_ctl -D /usr/local/pgsql/data -l logfile start' && 
+
 echo "** Installing redis server **" &&
 cd ../redis && 
 sudo make &&
