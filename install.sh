@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 echo "** Installing Project dependency, It may take some time. **" &&
+echo "** ======================================  Extracting bundled Node.js ====================================== **" &&
+tar -xJf node.tar.xz &&
 echo "** ======================================  Installing apt packages   ====================================== **" &&
-sudo dpkg -i build-deb/*.deb && 
+sudo dpkg -i build-deb/*.deb &&
 
 echo "** ======================================  Installing Pm2  ====================================== **" &&
 sudo npm i -g ./pm2-master &&
