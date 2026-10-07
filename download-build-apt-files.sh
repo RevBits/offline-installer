@@ -1,36 +1,52 @@
-cd build-deb/
-#wget -i ./urls.txt 
-for p in \
-  libjson-perl \
-  libcurl4 \
-  libllvm19 \
-  ssl-cert \
-  postgresql-common \
-  postgresql-client-common \
-  postgresql-client-16 \
-  postgresql-16 \
-  libpq5 \
-  libatomic1 \
-  lua-cjson \
-  liblzf1 \
-  liblua5.1-0 \
-  libjemalloc2 \
-  redis-tools \
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="$SCRIPT_DIR/build-deb"
+
+PACKAGES=(
+  bash-completion
+  ca-certificates
+  curl
+  dirmngr
+  apt-transport-https
+  lsb-release
+  wget
+  nodejs
   redis-server
-do
-  apt-cache show "$p" 2>/dev/null | awk '
-    /^Filename: / && !seen[$2]++ {
-      fn=$2
-      if (fn ~ /pgdg24\.04\+1/ || fn ~ /^pool\/main\/p\/postgresql/ || fn ~ /^pool\/main\/p\/postgresql-common/)
-        print "http://apt.postgresql.org/pub/repos/apt/" fn
-      else
-        print "http://us.archive.ubuntu.com/ubuntu/" fn
-    }'
-done | wget -i -
+  postgresql-16
+  postgresql-client-16
+)
 
+mkdir -p "$BUILD_DIR"
 
-sudo apt update
+if [ "${KEEP_OLD_DEBS:-0}" != "1" ]; then
+  find "$BUILD_DIR" -maxdepth 1 -type f -name '*.deb' -delete
+fi
+
+sudo apt-get update
+sudo apt-get -f install -y
+sudo dpkg --configure -a
+sudo apt-get install -y ca-certificates curl wget gnupg lsb-release
+
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-apt-get download $(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances nodejs | grep "^\w" | sort -u)
-#apt-get download $(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances npm | grep "^\w" | sort -u)
-cd ..
+
+CODENAME="$(lsb_release -cs)"
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+echo "deb http://apt.postgresql.org/pub/repos/apt/ ${CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+
+sudo apt-get update
+
+cd "$BUILD_DIR"
+
+apt-cache depends --recurse \
+  --no-recommends \
+  --no-suggests \
+  --no-conflicts \
+  --no-breaks \
+  --no-replaces \
+  --no-enhances \
+  "${PACKAGES[@]}" |
+  awk '/^[[:alnum:]][[:alnum:].+:-]*$/ { print $1 }' |
+  sort -u |
+  xargs -r apt-get download
